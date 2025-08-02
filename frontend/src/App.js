@@ -21,31 +21,29 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [budgetOverview, setBudgetOverview] = useState([]);
-  const [settings, setSettings] = useState({ default_currency: 'USD' });
-  const [selectedPeriod, setSelectedPeriod] = useState('monthly');
+  const [settings, setSettings] = useState({ app_name: 'Control de Presupuesto' });
+  const [selectedPeriod, setSelectedPeriod] = useState('mensual');
   const [spendingData, setSpendingData] = useState([]);
 
   // Form states
   const [transactionForm, setTransactionForm] = useState({
-    type: 'expense',
+    type: 'gasto',
     amount: '',
     category_id: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
-    currency: 'USD'
+    date: new Date().toISOString().split('T')[0]
   });
   
   const [categoryForm, setCategoryForm] = useState({
     name: '',
     color: '#3B82F6',
-    type: 'expense'
+    type: 'gasto'
   });
 
   const [budgetForm, setBudgetForm] = useState({
     category_id: '',
     amount: '',
-    period: 'monthly',
-    currency: 'USD'
+    period: 'mensual'
   });
 
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
@@ -58,7 +56,7 @@ function App() {
       const response = await axios.get(`${API}/transactions`);
       setTransactions(response.data);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
+      console.error('Error al obtener transacciones:', error);
     }
   };
 
@@ -67,7 +65,7 @@ function App() {
       const response = await axios.get(`${API}/categories`);
       setCategories(response.data);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error al obtener categorías:', error);
     }
   };
 
@@ -76,7 +74,7 @@ function App() {
       const response = await axios.get(`${API}/budget-overview/${selectedPeriod}`);
       setBudgetOverview(response.data);
     } catch (error) {
-      console.error('Error fetching budget overview:', error);
+      console.error('Error al obtener resumen de presupuesto:', error);
     }
   };
 
@@ -85,7 +83,7 @@ function App() {
       const response = await axios.get(`${API}/analytics/spending-by-category?period=${selectedPeriod}`);
       setSpendingData(response.data);
     } catch (error) {
-      console.error('Error fetching spending data:', error);
+      console.error('Error al obtener datos de gastos:', error);
     }
   };
 
@@ -93,10 +91,8 @@ function App() {
     try {
       const response = await axios.get(`${API}/settings`);
       setSettings(response.data);
-      setTransactionForm(prev => ({ ...prev, currency: response.data.default_currency }));
-      setBudgetForm(prev => ({ ...prev, currency: response.data.default_currency }));
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error('Error al obtener configuración:', error);
     }
   };
 
@@ -109,19 +105,18 @@ function App() {
         amount: parseFloat(transactionForm.amount)
       });
       setTransactionForm({
-        type: 'expense',
+        type: 'gasto',
         amount: '',
         category_id: '',
         description: '',
-        date: new Date().toISOString().split('T')[0],
-        currency: settings.default_currency
+        date: new Date().toISOString().split('T')[0]
       });
       setIsTransactionDialogOpen(false);
       fetchTransactions();
       fetchBudgetOverview();
       fetchSpendingData();
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      console.error('Error al crear transacción:', error);
     }
   };
 
@@ -132,12 +127,12 @@ function App() {
       setCategoryForm({
         name: '',
         color: '#3B82F6',
-        type: 'expense'
+        type: 'gasto'
       });
       setIsCategoryDialogOpen(false);
       fetchCategories();
     } catch (error) {
-      console.error('Error creating category:', error);
+      console.error('Error al crear categoría:', error);
     }
   };
 
@@ -151,13 +146,12 @@ function App() {
       setBudgetForm({
         category_id: '',
         amount: '',
-        period: 'monthly',
-        currency: settings.default_currency
+        period: 'mensual'
       });
       setIsBudgetDialogOpen(false);
       fetchBudgetOverview();
     } catch (error) {
-      console.error('Error creating budget:', error);
+      console.error('Error al crear presupuesto:', error);
     }
   };
 
@@ -168,23 +162,34 @@ function App() {
       fetchBudgetOverview();
       fetchSpendingData();
     } catch (error) {
-      console.error('Error deleting transaction:', error);
-    }
-  };
-
-  const updateCurrency = async (currency) => {
-    try {
-      await axios.put(`${API}/settings`, { default_currency: currency });
-      fetchSettings();
-    } catch (error) {
-      console.error('Error updating currency:', error);
+      console.error('Error al eliminar transacción:', error);
     }
   };
 
   // Calculate totals
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = transactions.filter(t => t.type === 'ingreso').reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = transactions.filter(t => t.type === 'gasto').reduce((sum, t) => sum + t.amount, 0);
   const netAmount = totalIncome - totalExpenses;
+
+  // Utility functions
+  const formatAmount = (amount) => `$${amount.toFixed(2)}`;
+  
+  const getPeriodLabel = (period) => {
+    const labels = {
+      'semanal': 'Semanal',
+      'mensual': 'Mensual', 
+      'anual': 'Anual'
+    };
+    return labels[period] || period;
+  };
+
+  const getTypeLabel = (type) => {
+    const labels = {
+      'ingreso': 'Ingreso',
+      'gasto': 'Gasto'
+    };
+    return labels[type] || type;
+  };
 
   useEffect(() => {
     fetchTransactions();
@@ -203,29 +208,18 @@ function App() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">Budget Tracker</h1>
-            <p className="text-slate-600">Manage your finances with ease</p>
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">Control de Presupuesto</h1>
+            <p className="text-slate-600">Administra tus finanzas con facilidad</p>
           </div>
           <div className="flex items-center gap-4">
-            <Select value={settings.default_currency} onValueChange={updateCurrency}>
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="USD">USD</SelectItem>
-                <SelectItem value="EUR">EUR</SelectItem>
-                <SelectItem value="GBP">GBP</SelectItem>
-                <SelectItem value="JPY">JPY</SelectItem>
-              </SelectContent>
-            </Select>
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="semanal">Semanal</SelectItem>
+                <SelectItem value="mensual">Mensual</SelectItem>
+                <SelectItem value="anual">Anual</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -235,36 +229,36 @@ function App() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-green-800">Total Income</CardTitle>
+              <CardTitle className="text-sm font-medium text-green-800">Total Ingresos</CardTitle>
               <TrendingUp className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-900">
-                {settings.default_currency} {totalIncome.toFixed(2)}
+                {formatAmount(totalIncome)}
               </div>
             </CardContent>
           </Card>
           
           <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-red-800">Total Expenses</CardTitle>
+              <CardTitle className="text-sm font-medium text-red-800">Total Gastos</CardTitle>
               <TrendingDown className="h-4 w-4 text-red-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-900">
-                {settings.default_currency} {totalExpenses.toFixed(2)}
+                {formatAmount(totalExpenses)}
               </div>
             </CardContent>
           </Card>
           
           <Card className={`bg-gradient-to-br ${netAmount >= 0 ? 'from-blue-50 to-blue-100 border-blue-200' : 'from-orange-50 to-orange-100 border-orange-200'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className={`text-sm font-medium ${netAmount >= 0 ? 'text-blue-800' : 'text-orange-800'}`}>Net Amount</CardTitle>
+              <CardTitle className={`text-sm font-medium ${netAmount >= 0 ? 'text-blue-800' : 'text-orange-800'}`}>Cantidad Neta</CardTitle>
               <Wallet className={`h-4 w-4 ${netAmount >= 0 ? 'text-blue-600' : 'text-orange-600'}`} />
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${netAmount >= 0 ? 'text-blue-900' : 'text-orange-900'}`}>
-                {settings.default_currency} {netAmount.toFixed(2)}
+                {formatAmount(netAmount)}
               </div>
             </CardContent>
           </Card>
@@ -280,38 +274,38 @@ function App() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       <Target className="h-5 w-5" />
-                      Budget Overview ({selectedPeriod})
+                      Resumen de Presupuesto ({getPeriodLabel(selectedPeriod)})
                     </CardTitle>
-                    <CardDescription>Track your spending against budgets</CardDescription>
+                    <CardDescription>Rastrea tus gastos contra los presupuestos</CardDescription>
                   </div>
                   <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
                     <DialogTrigger asChild>
                       <Button size="sm">
                         <Plus className="h-4 w-4 mr-1" />
-                        Set Budget
+                        Crear Presupuesto
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Set Budget</DialogTitle>
-                        <DialogDescription>Create a new budget for a category</DialogDescription>
+                        <DialogTitle>Crear Presupuesto</DialogTitle>
+                        <DialogDescription>Establece un nuevo presupuesto para una categoría</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={createBudget} className="space-y-4">
                         <div>
-                          <Label htmlFor="budget-category">Category</Label>
+                          <Label htmlFor="budget-category">Categoría</Label>
                           <Select value={budgetForm.category_id} onValueChange={(value) => setBudgetForm({...budgetForm, category_id: value})}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
+                              <SelectValue placeholder="Seleccionar categoría" />
                             </SelectTrigger>
                             <SelectContent>
-                              {categories.filter(c => c.type === 'expense').map(category => (
+                              {categories.filter(c => c.type === 'gasto').map(category => (
                                 <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor="budget-amount">Budget Amount</Label>
+                          <Label htmlFor="budget-amount">Monto del Presupuesto</Label>
                           <Input
                             id="budget-amount"
                             type="number"
@@ -323,19 +317,19 @@ function App() {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="budget-period">Period</Label>
+                          <Label htmlFor="budget-period">Período</Label>
                           <Select value={budgetForm.period} onValueChange={(value) => setBudgetForm({...budgetForm, period: value})}>
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
+                              <SelectItem value="semanal">Semanal</SelectItem>
+                              <SelectItem value="mensual">Mensual</SelectItem>
+                              <SelectItem value="anual">Anual</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <Button type="submit" className="w-full">Create Budget</Button>
+                        <Button type="submit" className="w-full">Crear Presupuesto</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
@@ -355,10 +349,10 @@ function App() {
                         </div>
                         <div className="text-right">
                           <div className="text-sm text-slate-600">
-                            {budget.currency} {budget.spent_amount.toFixed(2)} / {budget.budget_amount.toFixed(2)}
+                            {formatAmount(budget.spent_amount)} / {formatAmount(budget.budget_amount)}
                           </div>
                           {budget.is_over_budget && (
-                            <Badge variant="destructive" className="text-xs">Over Budget</Badge>
+                            <Badge variant="destructive" className="text-xs">Excedido</Badge>
                           )}
                         </div>
                       </div>
@@ -367,14 +361,14 @@ function App() {
                         className="h-2"
                       />
                       <div className="flex justify-between text-xs text-slate-500">
-                        <span>{budget.percentage_used.toFixed(1)}% used</span>
-                        <span>{budget.remaining_amount.toFixed(2)} remaining</span>
+                        <span>{budget.percentage_used.toFixed(1)}% usado</span>
+                        <span>{formatAmount(budget.remaining_amount)} restante</span>
                       </div>
                     </div>
                   ))}
                   {budgetOverview.length === 0 && (
                     <div className="text-center text-slate-500 py-8">
-                      No budgets set for {selectedPeriod} period
+                      No hay presupuestos establecidos para el período {getPeriodLabel(selectedPeriod).toLowerCase()}
                     </div>
                   )}
                 </div>
@@ -386,9 +380,9 @@ function App() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <DollarSign className="h-5 w-5" />
-                  Spending by Category
+                  Gastos por Categoría
                 </CardTitle>
-                <CardDescription>Your top spending categories this {selectedPeriod}</CardDescription>
+                <CardDescription>Tus principales categorías de gasto este {getPeriodLabel(selectedPeriod).toLowerCase()}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -403,14 +397,14 @@ function App() {
                         <span className="font-medium">{item.category_name}</span>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold">{settings.default_currency} {item.total_spent.toFixed(2)}</div>
-                        <div className="text-xs text-slate-500">{item.transaction_count} transactions</div>
+                        <div className="font-bold">{formatAmount(item.total_spent)}</div>
+                        <div className="text-xs text-slate-500">{item.transaction_count} transacciones</div>
                       </div>
                     </div>
                   ))}
                   {spendingData.length === 0 && (
                     <div className="text-center text-slate-500 py-8">
-                      No spending data for {selectedPeriod} period
+                      No hay datos de gastos para el período {getPeriodLabel(selectedPeriod).toLowerCase()}
                     </div>
                   )}
                 </div>
@@ -423,31 +417,31 @@ function App() {
             {/* Quick Add Transaction */}
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle>Acciones Rápidas</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="w-full" size="lg">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Transaction
+                      Agregar Transacción
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Transaction</DialogTitle>
-                      <DialogDescription>Record a new income or expense</DialogDescription>
+                      <DialogTitle>Agregar Transacción</DialogTitle>
+                      <DialogDescription>Registra un nuevo ingreso o gasto</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={createTransaction} className="space-y-4">
                       <Tabs value={transactionForm.type} onValueChange={(value) => setTransactionForm({...transactionForm, type: value})}>
                         <TabsList className="grid w-full grid-cols-2">
-                          <TabsTrigger value="income">Income</TabsTrigger>
-                          <TabsTrigger value="expense">Expense</TabsTrigger>
+                          <TabsTrigger value="ingreso">Ingreso</TabsTrigger>
+                          <TabsTrigger value="gasto">Gasto</TabsTrigger>
                         </TabsList>
                       </Tabs>
                       
                       <div>
-                        <Label htmlFor="amount">Amount</Label>
+                        <Label htmlFor="amount">Cantidad</Label>
                         <Input
                           id="amount"
                           type="number"
@@ -460,10 +454,10 @@ function App() {
                       </div>
                       
                       <div>
-                        <Label htmlFor="category">Category</Label>
+                        <Label htmlFor="category">Categoría</Label>
                         <Select value={transactionForm.category_id} onValueChange={(value) => setTransactionForm({...transactionForm, category_id: value})}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
+                            <SelectValue placeholder="Seleccionar categoría" />
                           </SelectTrigger>
                           <SelectContent>
                             {categories.filter(c => c.type === transactionForm.type).map(category => (
@@ -474,17 +468,17 @@ function App() {
                       </div>
                       
                       <div>
-                        <Label htmlFor="description">Description (optional)</Label>
+                        <Label htmlFor="description">Descripción (opcional)</Label>
                         <Input
                           id="description"
-                          placeholder="Transaction description"
+                          placeholder="Descripción de la transacción"
                           value={transactionForm.description}
                           onChange={(e) => setTransactionForm({...transactionForm, description: e.target.value})}
                         />
                       </div>
                       
                       <div>
-                        <Label htmlFor="date">Date</Label>
+                        <Label htmlFor="date">Fecha</Label>
                         <Input
                           id="date"
                           type="date"
@@ -494,7 +488,7 @@ function App() {
                         />
                       </div>
                       
-                      <Button type="submit" className="w-full">Add Transaction</Button>
+                      <Button type="submit" className="w-full">Agregar Transacción</Button>
                     </form>
                   </DialogContent>
                 </Dialog>
@@ -503,20 +497,20 @@ function App() {
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Category
+                      Agregar Categoría
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Category</DialogTitle>
-                      <DialogDescription>Create a new category for your transactions</DialogDescription>
+                      <DialogTitle>Agregar Categoría</DialogTitle>
+                      <DialogDescription>Crea una nueva categoría para tus transacciones</DialogDescription>
                     </DialogHeader>
                     <form onSubmit={createCategory} className="space-y-4">
                       <div>
-                        <Label htmlFor="category-name">Category Name</Label>
+                        <Label htmlFor="category-name">Nombre de la Categoría</Label>
                         <Input
                           id="category-name"
-                          placeholder="Category name"
+                          placeholder="Nombre de la categoría"
                           value={categoryForm.name}
                           onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
                           required
@@ -524,14 +518,14 @@ function App() {
                       </div>
                       
                       <div>
-                        <Label htmlFor="category-type">Type</Label>
+                        <Label htmlFor="category-type">Tipo</Label>
                         <Select value={categoryForm.type} onValueChange={(value) => setCategoryForm({...categoryForm, type: value})}>
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="income">Income</SelectItem>
-                            <SelectItem value="expense">Expense</SelectItem>
+                            <SelectItem value="ingreso">Ingreso</SelectItem>
+                            <SelectItem value="gasto">Gasto</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -546,7 +540,7 @@ function App() {
                         />
                       </div>
                       
-                      <Button type="submit" className="w-full">Create Category</Button>
+                      <Button type="submit" className="w-full">Crear Categoría</Button>
                     </form>
                   </DialogContent>
                 </Dialog>
@@ -558,7 +552,7 @@ function App() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
-                  Recent Transactions
+                  Transacciones Recientes
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -567,8 +561,8 @@ function App() {
                     <div key={transaction.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <Badge variant={transaction.type === 'income' ? 'default' : 'secondary'}>
-                            {transaction.type}
+                          <Badge variant={transaction.type === 'ingreso' ? 'default' : 'secondary'}>
+                            {getTypeLabel(transaction.type)}
                           </Badge>
                           <span className="font-medium text-sm">{transaction.category_name}</span>
                         </div>
@@ -578,8 +572,8 @@ function App() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className={`font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                          {transaction.type === 'income' ? '+' : '-'}{transaction.currency} {transaction.amount.toFixed(2)}
+                        <span className={`font-bold ${transaction.type === 'ingreso' ? 'text-green-600' : 'text-red-600'}`}>
+                          {transaction.type === 'ingreso' ? '+' : '-'}{formatAmount(transaction.amount)}
                         </span>
                         <Button
                           size="sm"
@@ -594,7 +588,7 @@ function App() {
                   ))}
                   {transactions.length === 0 && (
                     <div className="text-center text-slate-500 py-8">
-                      No transactions yet
+                      No hay transacciones aún
                     </div>
                   )}
                 </div>

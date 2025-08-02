@@ -27,13 +27,13 @@ api_router = APIRouter(prefix="/api")
 
 # Enums
 class TransactionType(str, Enum):
-    income = "income"
-    expense = "expense"
+    income = "ingreso"
+    expense = "gasto"
 
 class BudgetPeriod(str, Enum):
-    weekly = "weekly"
-    monthly = "monthly"
-    yearly = "yearly"
+    weekly = "semanal"
+    monthly = "mensual"
+    yearly = "anual"
 
 # Models
 class Category(BaseModel):
@@ -56,7 +56,6 @@ class Transaction(BaseModel):
     category_name: str
     description: Optional[str] = ""
     date: date
-    currency: str = "USD"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class TransactionCreate(BaseModel):
@@ -65,7 +64,6 @@ class TransactionCreate(BaseModel):
     category_id: str
     description: Optional[str] = ""
     date: date
-    currency: str = "USD"
 
 class Budget(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -73,22 +71,20 @@ class Budget(BaseModel):
     category_name: str
     amount: float
     period: BudgetPeriod
-    currency: str = "USD"
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class BudgetCreate(BaseModel):
     category_id: str
     amount: float
     period: BudgetPeriod
-    currency: str = "USD"
 
 class Settings(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    default_currency: str = "USD"
+    app_name: str = "Control de Presupuesto"
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class SettingsUpdate(BaseModel):
-    default_currency: str
+    app_name: str
 
 class BudgetOverview(BaseModel):
     category_id: str
@@ -100,12 +96,11 @@ class BudgetOverview(BaseModel):
     remaining_amount: float
     percentage_used: float
     is_over_budget: bool
-    currency: str
 
 # Routes
 @api_router.get("/")
 async def root():
-    return {"message": "Budget Tracker API"}
+    return {"message": "API de Control de Presupuesto"}
 
 # Categories
 @api_router.post("/categories", response_model=Category)
@@ -129,8 +124,8 @@ async def get_categories_by_type(category_type: TransactionType):
 async def delete_category(category_id: str):
     result = await db.categories.delete_one({"id": category_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Category not found")
-    return {"message": "Category deleted"}
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    return {"message": "Categoría eliminada"}
 
 # Transactions
 @api_router.post("/transactions", response_model=Transaction)
@@ -138,7 +133,7 @@ async def create_transaction(transaction: TransactionCreate):
     # Get category name
     category = await db.categories.find_one({"id": transaction.category_id})
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
     
     transaction_dict = transaction.dict()
     transaction_dict["category_name"] = category["name"]
@@ -181,8 +176,8 @@ async def get_transactions_by_type(transaction_type: TransactionType, limit: Opt
 async def delete_transaction(transaction_id: str):
     result = await db.transactions.delete_one({"id": transaction_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Transaction not found")
-    return {"message": "Transaction deleted"}
+        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+    return {"message": "Transacción eliminada"}
 
 # Budgets
 @api_router.post("/budgets", response_model=Budget)
@@ -196,7 +191,7 @@ async def create_budget(budget: BudgetCreate):
         # Update existing budget
         await db.budgets.update_one(
             {"id": existing_budget["id"]},
-            {"$set": {"amount": budget.amount, "currency": budget.currency}}
+            {"$set": {"amount": budget.amount}}
         )
         updated_budget = await db.budgets.find_one({"id": existing_budget["id"]})
         return Budget(**updated_budget)
@@ -204,7 +199,7 @@ async def create_budget(budget: BudgetCreate):
     # Get category name
     category = await db.categories.find_one({"id": budget.category_id})
     if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
     
     budget_dict = budget.dict()
     budget_dict["category_name"] = category["name"]
@@ -226,8 +221,8 @@ async def get_budgets_by_period(period: BudgetPeriod):
 async def delete_budget(budget_id: str):
     result = await db.budgets.delete_one({"id": budget_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Budget not found")
-    return {"message": "Budget deleted"}
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado")
+    return {"message": "Presupuesto eliminado"}
 
 # Budget Overview
 @api_router.get("/budget-overview/{period}", response_model=List[BudgetOverview])
@@ -254,7 +249,7 @@ async def get_budget_overview(period: BudgetPeriod):
         # Calculate spent amount for this category in the period
         spent_transactions = await db.transactions.find({
             "category_id": budget["category_id"],
-            "type": "expense",
+            "type": "gasto",
             "date": {"$gte": start_date.isoformat(), "$lte": end_date.isoformat()}
         }).to_list(1000)
         
@@ -275,8 +270,7 @@ async def get_budget_overview(period: BudgetPeriod):
             spent_amount=spent_amount,
             remaining_amount=remaining_amount,
             percentage_used=percentage_used,
-            is_over_budget=is_over_budget,
-            currency=budget["currency"]
+            is_over_budget=is_over_budget
         )
         overview.append(overview_item)
     
@@ -298,35 +292,35 @@ async def update_settings(settings_update: SettingsUpdate):
     settings = await db.settings.find_one()
     if not settings:
         # Create new settings
-        new_settings = Settings(default_currency=settings_update.default_currency)
+        new_settings = Settings(app_name=settings_update.app_name)
         await db.settings.insert_one(new_settings.dict())
         return new_settings
     
     # Update existing settings
     await db.settings.update_one(
         {"id": settings["id"]},
-        {"$set": {"default_currency": settings_update.default_currency, "updated_at": datetime.utcnow()}}
+        {"$set": {"app_name": settings_update.app_name, "updated_at": datetime.utcnow()}}
     )
     updated_settings = await db.settings.find_one({"id": settings["id"]})
     return Settings(**updated_settings)
 
 # Analytics
 @api_router.get("/analytics/spending-by-category")
-async def get_spending_by_category(period: Optional[str] = "monthly"):
+async def get_spending_by_category(period: Optional[str] = "mensual"):
     # Calculate date range based on period
     today = date.today()
-    if period == "weekly":
+    if period == "semanal":
         start_date = today - timedelta(days=today.weekday())
-    elif period == "monthly":
+    elif period == "mensual":
         start_date = today.replace(day=1)
-    else:  # yearly
+    else:  # anual
         start_date = today.replace(month=1, day=1)
     
     # Aggregate spending by category
     pipeline = [
         {
             "$match": {
-                "type": "expense",
+                "type": "gasto",
                 "date": {"$gte": start_date.isoformat()}
             }
         },
