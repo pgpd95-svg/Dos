@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from enum import Enum
 
 ROOT_DIR = Path(__file__).parent
