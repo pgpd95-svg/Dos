@@ -218,14 +218,14 @@ async def get_budget_overview(period: BudgetPeriod):
         # Calculate date range based on period
         today = date.today()
         if period == BudgetPeriod.weekly:
-            start_date = today - datetime.timedelta(days=today.weekday())
-            end_date = start_date + datetime.timedelta(days=6)
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=6)
         elif period == BudgetPeriod.monthly:
             start_date = today.replace(day=1)
             if today.month == 12:
-                end_date = today.replace(year=today.year + 1, month=1, day=1) - datetime.timedelta(days=1)
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
             else:
-                end_date = today.replace(month=today.month + 1, day=1) - datetime.timedelta(days=1)
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
         else:  # yearly
             start_date = today.replace(month=1, day=1)
             end_date = today.replace(month=12, day=31)
