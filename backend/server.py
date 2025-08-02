@@ -157,15 +157,25 @@ async def create_transaction(transaction: TransactionCreate):
     await db.transactions.insert_one(transaction_dict_for_db)
     return transaction_obj
 
+# Helper function to convert date strings back to date objects
+def convert_transaction_dates(tx_dict):
+    """Convert date strings back to date objects for Transaction model"""
+    if isinstance(tx_dict.get("date"), str):
+        try:
+            tx_dict["date"] = datetime.fromisoformat(tx_dict["date"]).date()
+        except:
+            pass
+    return tx_dict
+
 @api_router.get("/transactions", response_model=List[Transaction])
 async def get_transactions(limit: Optional[int] = 100):
     transactions = await db.transactions.find().sort("created_at", -1).limit(limit).to_list(limit)
-    return [Transaction(**tx) for tx in transactions]
+    return [Transaction(**convert_transaction_dates(tx)) for tx in transactions]
 
 @api_router.get("/transactions/{transaction_type}", response_model=List[Transaction])
 async def get_transactions_by_type(transaction_type: TransactionType, limit: Optional[int] = 100):
     transactions = await db.transactions.find({"type": transaction_type}).sort("created_at", -1).limit(limit).to_list(limit)
-    return [Transaction(**tx) for tx in transactions]
+    return [Transaction(**convert_transaction_dates(tx)) for tx in transactions]
 
 @api_router.delete("/transactions/{transaction_id}")
 async def delete_transaction(transaction_id: str):
