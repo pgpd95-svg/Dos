@@ -295,7 +295,7 @@ async def get_spending_by_category(period: Optional[str] = "monthly"):
     # Calculate date range based on period
     today = date.today()
     if period == "weekly":
-        start_date = today - datetime.timedelta(days=today.weekday())
+        start_date = today - timedelta(days=today.weekday())
     elif period == "monthly":
         start_date = today.replace(day=1)
     else:  # yearly
